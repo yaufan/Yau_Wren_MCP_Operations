@@ -1,0 +1,36 @@
+# 自動巡檢服務；要跟原本的 docker-compose.yml 一起用：
+#   docker compose -f docker-compose.yml -f docker-compose.explorer.yml up -d --build --no-deps explorer
+# 用 explorer_up.sh／explorer_up.bat 啟動即可，它會處理密碼與通行碼
+services:
+  explorer:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.explorer
+    image: wren-explorer:0.1
+    depends_on:
+      gateway:
+        condition: service_started
+    environment:
+      TZ: Asia/Taipei
+      EXPLORER_MCP_URL: http://gateway:8080/mcp          # 走閘道：每句查詢都記在 wren_access.log
+      EXPLORER_MCP_TOKEN: ${MCP_TOKEN:?請先設定 MCP_TOKEN}
+      EXPLORER_WEB_TOKEN: ${EXPLORER_WEB_TOKEN:?請先設定 EXPLORER_WEB_TOKEN}
+      EXPLORER_SCAN_AT: ${EXPLORER_SCAN_AT:-05:30}
+      EXPLORER_SCAN_ON_START: ${EXPLORER_SCAN_ON_START:-0}
+      # 要用院內 LLM 寫卡時再打開（OpenAI 相容端點；病人資料只送院內）
+      # EXPLORER_LLM_BASE_URL: http://<院內推論平台>/v1
+      # EXPLORER_LLM_MODEL: <模型名稱>
+    volumes:
+      - explorer_state:/app/explorer/state                # 登記簿、每日結果；重建容器不會不見
+    ports:
+      - "${EXPLORER_WEB_PORT:-18090}:8090"
+    restart: unless-stopped
+    networks: [wren_net]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8090), 3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  explorer_state: {}

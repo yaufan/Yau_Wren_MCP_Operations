@@ -1,0 +1,77 @@
+# 驗收題組（readonly_user 唯讀模式）：wren_sql 走 Wren 語意層，raw_sql 直接查 public 原始表；兩者結果必須相同
+- id: Q01
+  nl: 各模型的推論量是多少？
+  wren_sql: SELECT model, COUNT(*) AS n FROM inferences GROUP BY model ORDER BY model
+  raw_sql: SELECT model, COUNT(*) AS n FROM public.inference_record WHERE inference_status NOT IN ('success','error','invalid') AND model NOT LIKE 'IT\_%' AND UPPER(model) NOT LIKE 'TEST%' GROUP BY model ORDER BY model
+- id: Q02
+  nl: 各模型的 NFI（資料規格不符）比例是多少？
+  wren_sql: SELECT model, ROUND(AVG(is_nfi) * 100, 1) AS nfi_pct FROM inferences GROUP BY model ORDER BY model
+  raw_sql: SELECT model, ROUND(AVG(CASE WHEN inference_status = 'NFI' THEN 1 ELSE 0 END) * 100, 1) AS nfi_pct FROM public.inference_record WHERE inference_status NOT IN ('success','error','invalid') AND model NOT LIKE 'IT\_%' AND UPPER(model) NOT LIKE 'TEST%' GROUP BY model ORDER BY model
+- id: Q03
+  nl: 各模型的成功率是多少？
+  wren_sql: SELECT model, ROUND(AVG(is_success) * 100, 1) AS success_pct FROM inferences GROUP BY model ORDER BY model
+  raw_sql: SELECT model, ROUND(AVG(CASE WHEN inference_status IN ('4.2','5') THEN 1 ELSE 0 END) * 100, 1) AS success_pct FROM public.inference_record WHERE inference_status NOT IN ('success','error','invalid') AND model NOT LIKE 'IT\_%' AND UPPER(model) NOT LIKE 'TEST%' GROUP BY model ORDER BY model
+- id: Q04
+  nl: 總共做了幾份心電圖檢查？
+  wren_sql: SELECT COUNT(DISTINCT exam_id) AS ecg_exams FROM inferences WHERE filetype = 'XML'
+  raw_sql: SELECT COUNT(DISTINCT r.patient_id) AS ecg_exams FROM public.inference_record r JOIN public.patient_info p ON p.id = r.patient_id WHERE p.filetype = 'XML' AND r.inference_status NOT IN ('success','error','invalid') AND r.model NOT LIKE 'IT\_%' AND UPPER(r.model) NOT LIKE 'TEST%'
+- id: Q06
+  nl: 各院區 2026 年 10 月的心電圖檢查量？
+  wren_sql: SELECT site, COUNT(DISTINCT exam_id) AS exams FROM inferences WHERE filetype = 'XML' AND study_month = '2026-10' GROUP BY site ORDER BY site
+  raw_sql: "SELECT p.locno AS site, COUNT(DISTINCT p.id) AS exams FROM public.patient_info p JOIN public.inference_record r ON r.patient_id = p.id WHERE p.filetype = 'XML' AND p.study_time >= '2026-10-01' AND p.study_time < '2026-11-01'\n  AND r.inference_status NOT IN ('success','error','invalid') AND r.model NOT LIKE 'IT\\_%' AND UPPER(r.model) NOT LIKE 'TEST%'\nGROUP BY p.locno ORDER BY p.locno"
+- id: Q07
+  nl: 2026 年每個月的推論量（全部模型合計）？
+  wren_sql: SELECT study_month, COUNT(*) AS n FROM inferences WHERE study_month LIKE '2026-%' GROUP BY study_month ORDER BY study_month
+  raw_sql: "SELECT TO_CHAR(p.study_time, 'YYYY-MM') AS study_month, COUNT(*) AS n FROM public.inference_record r JOIN public.patient_info p ON p.id = r.patient_id WHERE p.study_time >= '2026-01-01' AND p.study_time < '2027-01-01'\n  AND r.inference_status NOT IN ('success','error','invalid') AND r.model NOT LIKE 'IT\\_%' AND UPPER(r.model) NOT LIKE 'TEST%'\nGROUP BY 1 ORDER BY 1"
+- id: Q08
+  nl: 有哪些推論目前停在處理中？
+  wren_sql: SELECT id, model, inference_status FROM inferences WHERE status_category = '處理中' ORDER BY id
+  raw_sql: "SELECT id, model, inference_status FROM public.inference_record WHERE inference_status NOT IN ('4.2','5','NFI','success','error','invalid')\n  AND inference_status NOT LIKE '%E' AND model NOT LIKE 'IT\\_%' AND UPPER(model) NOT LIKE 'TEST%'\nORDER BY id"
+- id: Q09
+  nl: 各模型成功件的平均推論耗時（秒）？
+  wren_sql: SELECT model, ROUND(AVG(infer_seconds)) AS avg_s FROM inferences WHERE status_category = '成功' GROUP BY model ORDER BY model
+  raw_sql: SELECT r.model, ROUND(AVG(EXTRACT(EPOCH FROM r.data_storage_time - p.platform_time))) AS avg_s FROM public.inference_record r JOIN public.patient_info p ON p.id = r.patient_id WHERE r.inference_status IN ('4.2','5') AND r.model NOT LIKE 'IT\_%' AND UPPER(r.model) NOT LIKE 'TEST%' GROUP BY r.model ORDER BY r.model
+- id: Q10
+  nl: 各模型端到端耗時的第 90 百分位數（秒）？
+  wren_sql: SELECT model, percentile_cont(0.9) WITHIN GROUP (ORDER BY end_to_end_seconds) AS p90 FROM inferences WHERE status_category = '成功' GROUP BY model ORDER BY model
+  raw_sql: SELECT r.model, percentile_cont(0.9) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM r.image_storage_time - p.study_time)) AS p90 FROM public.inference_record r JOIN public.patient_info p ON p.id = r.patient_id WHERE r.inference_status IN ('4.2','5') AND r.model NOT LIKE 'IT\_%' AND UPPER(r.model) NOT LIKE 'TEST%' GROUP BY r.model ORDER BY r.model
+- id: Q11
+  nl: 哪些模型有推論紀錄但沒有登記在模型狀態表？
+  wren_sql: SELECT DISTINCT i.model FROM inferences i LEFT JOIN model_status m ON i.model = m.model WHERE m.model IS NULL ORDER BY i.model
+  raw_sql: "SELECT DISTINCT r.model FROM public.inference_record r LEFT JOIN public.model_status m ON r.model = m.model WHERE m.model IS NULL AND r.model NOT LIKE 'IT\\_%' AND UPPER(r.model) NOT LIKE 'TEST%'\n  AND r.inference_status NOT IN ('success','error','invalid')\nORDER BY r.model"
+- id: Q12
+  nl: 目前在 running 的模型各有多少推論量？
+  wren_sql: SELECT i.model, COUNT(*) AS n FROM inferences i JOIN model_status m ON i.model = m.model WHERE m.ctrl_status = 'running' GROUP BY i.model ORDER BY i.model
+  raw_sql: SELECT r.model, COUNT(*) AS n FROM public.inference_record r JOIN public.model_status m ON r.model = m.model WHERE m.ctrl_status = 'running' AND r.inference_status NOT IN ('success','error','invalid') GROUP BY r.model ORDER BY r.model
+- id: Q13
+  nl: 心室收縮功能模型的測試期資料有幾筆？
+  wren_sql: SELECT COUNT(*) AS n FROM inferences_all WHERE model = 'ECG_LV_Function' AND is_test_era
+  raw_sql: SELECT COUNT(*) AS n FROM public.inference_record WHERE model = 'ECG_LV_Function' AND inference_status IN ('success','error','invalid')
+- id: Q14
+  nl: IMG_Abdominal_Trauma NFI 的原因前 5 名？
+  wren_sql: SELECT info_log, COUNT(*) AS n FROM inferences WHERE model = 'IMG_Abdominal_Trauma' AND status_category = '不適用' GROUP BY info_log ORDER BY n DESC, info_log LIMIT 5
+  raw_sql: SELECT info_log, COUNT(*) AS n FROM public.inference_record WHERE model = 'IMG_Abdominal_Trauma' AND inference_status = 'NFI' GROUP BY info_log ORDER BY n DESC, info_log LIMIT 5
+- id: Q15
+  nl: 各院區的 NFI 比例（全部模型）？
+  wren_sql: SELECT site, ROUND(AVG(is_nfi) * 100, 1) AS nfi_pct FROM inferences GROUP BY site ORDER BY site
+  raw_sql: SELECT p.locno AS site, ROUND(AVG(CASE WHEN r.inference_status = 'NFI' THEN 1 ELSE 0 END) * 100, 1) AS nfi_pct FROM public.inference_record r JOIN public.patient_info p ON p.id = r.patient_id WHERE r.inference_status NOT IN ('success','error','invalid') AND r.model NOT LIKE 'IT\_%' AND UPPER(r.model) NOT LIKE 'TEST%' GROUP BY p.locno ORDER BY p.locno
+- id: Q16
+  nl: 舊版代碼（5）和新版代碼（4.2）的成功件各有幾筆？
+  wren_sql: SELECT inference_status, COUNT(*) AS n FROM inferences WHERE status_category = '成功' GROUP BY inference_status ORDER BY inference_status
+  raw_sql: SELECT inference_status, COUNT(*) AS n FROM public.inference_record WHERE inference_status IN ('4.2','5') AND model NOT LIKE 'IT\_%' AND UPPER(model) NOT LIKE 'TEST%' GROUP BY inference_status ORDER BY inference_status
+- id: Q17
+  nl: BONE 四個部位各有多少成功件？
+  wren_sql: SELECT model, SUM(is_success) AS ok FROM inferences WHERE model LIKE 'BONE%' GROUP BY model ORDER BY model
+  raw_sql: SELECT model, SUM(CASE WHEN inference_status IN ('4.2','5') THEN 1 ELSE 0 END) AS ok FROM public.inference_record WHERE model LIKE 'BONE%' GROUP BY model ORDER BY model
+- id: Q18
+  nl: 心電圖從檢查到進平台的平均傳輸延遲（秒），依院區？
+  wren_sql: SELECT site, ROUND(AVG(transfer_seconds)) AS avg_s FROM exams WHERE filetype = 'XML' GROUP BY site ORDER BY site
+  raw_sql: SELECT locno AS site, ROUND(AVG(EXTRACT(EPOCH FROM platform_time - study_time))) AS avg_s FROM public.patient_info WHERE filetype = 'XML' GROUP BY locno ORDER BY locno
+- id: Q19
+  nl: 每份心電圖平均被幾個模型推論？
+  wren_sql: SELECT ROUND(CAST(COUNT(*) AS DOUBLE) / COUNT(DISTINCT exam_id), 2) AS models_per_exam FROM inferences WHERE filetype = 'XML'
+  raw_sql: SELECT ROUND(COUNT(*)::numeric / COUNT(DISTINCT r.patient_id), 2) AS models_per_exam FROM public.inference_record r JOIN public.patient_info p ON p.id = r.patient_id WHERE p.filetype = 'XML' AND r.inference_status NOT IN ('success','error','invalid') AND r.model NOT LIKE 'IT\_%' AND UPPER(r.model) NOT LIKE 'TEST%'
+- id: Q20
+  nl: IMG_Dental_Pano 每個月的成功件數？
+  wren_sql: SELECT study_month, SUM(is_success) AS ok FROM inferences WHERE model = 'IMG_Dental_Pano' GROUP BY study_month ORDER BY study_month
+  raw_sql: "SELECT TO_CHAR(p.study_time, 'YYYY-MM') AS study_month,\n       SUM(CASE WHEN r.inference_status IN ('4.2','5') THEN 1 ELSE 0 END) AS ok\nFROM public.inference_record r JOIN public.patient_info p ON p.id = r.patient_id WHERE r.model = 'IMG_Dental_Pano' GROUP BY 1 ORDER BY 1"

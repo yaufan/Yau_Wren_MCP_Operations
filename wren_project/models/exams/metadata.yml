@@ -1,0 +1,42 @@
+name: exams
+ref_sql: |
+  SELECT id, locno AS site, filetype, procedure_code, platform_time, study_time
+  FROM public.patient_info
+primary_key: id
+properties:
+  description: >-
+    一筆 = 一次送進推論平台的檢查（一份心電圖 XML 或一組 DICOM 影像）。
+    同一份檢查可能被多個模型推論（例如每份心電圖都跑 3 個心電圖模型），
+    所以「檢查量」要用本表計算，不要把推論紀錄加總。
+    不提供病歷號、PACS UID 與檔名（PoC 階段無病人層級鍵，無法計算「幾位病人」）。
+columns:
+  - name: id
+    type: INTEGER
+    is_primary_key: true
+    not_null: true
+    properties: {description: 檢查流水號（推論平台內部 ID）}
+  - name: site
+    type: VARCHAR
+    properties: {description: 院區代號，例如 S01、S02、S03、S04、S05、S06、S07、S08、S09、S10；Unk＝未知}
+  - name: filetype
+    type: VARCHAR
+    properties: {description: 來源檔案類型：XML（心電圖）或 DICOM（影像）}
+  - name: procedure_code
+    type: VARCHAR
+    properties: {description: 檢查或手術代碼}
+  - name: study_time
+    type: TIMESTAMP
+    properties: {description: 檢查時間（醫院系統登記時間，台北時間、無時區）}
+  - name: platform_time
+    type: TIMESTAMP
+    properties: {description: 資料進入推論平台的時間（台北時間、無時區）}
+  - name: study_date
+    type: DATE
+    is_calculated: true
+    expression: CAST(study_time AS DATE)
+    properties: {description: 檢查日期}
+  - name: transfer_seconds
+    type: DOUBLE
+    is_calculated: true
+    expression: date_part('epoch', platform_time - study_time)
+    properties: {description: 從檢查到進平台的秒數（院內傳輸延遲）}

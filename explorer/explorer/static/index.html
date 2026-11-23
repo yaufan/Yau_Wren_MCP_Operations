@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>推論平台自動巡檢</title>
+<link rel="icon" href="data:,">
+<style>
+:root{--ink:#14213D;--ink2:#3F4A5A;--mute:#6B7480;--paper:#F7F6F2;--card:#FDFDFB;--line:#DEDBD2;--teal:#1D7A74;--teal-bg:#E3F1EE;--amber:#9A5B0B;--amber-bg:#FAEEDA;--red:#A32D2D;--red-bg:#FBEAEA;--gray-bg:#EEECE6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC","Heiti TC",system-ui,sans-serif;font-size:15px;line-height:1.6}
+header{background:var(--ink);color:#F7F6F2;padding:14px 28px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center}
+header h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.5px}
+header .meta{font-size:13px;color:#B8C2D1}
+header select{font:inherit;font-size:14px;padding:4px 8px;border-radius:6px;border:1px solid #4A5878;background:#1E2D4F;color:#F7F6F2}
+.demo{background:var(--amber-bg);color:#633806;border-bottom:1px solid #E5C48F;padding:8px 28px;font-size:13px}
+nav{display:flex;gap:4px;padding:0 28px;background:var(--card);border-bottom:1px solid var(--line);overflow-x:auto}
+nav button{font:inherit;font-size:15px;border:0;background:none;padding:12px 16px;color:var(--ink2);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+nav button[aria-selected=true]{color:var(--ink);font-weight:700;border-bottom-color:var(--teal)}
+main{padding:24px 28px 60px;max-width:1400px}
+h2{font-size:17px;margin:28px 0 12px}
+h2:first-child{margin-top:0}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.tile .n{font-size:30px;font-weight:700;line-height:1.2}
+.tile .l{font-size:13px;color:var(--mute)}
+.tile.need{border-color:var(--teal);background:var(--teal-bg)}
+.tile.need .n{color:var(--teal)}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+.item:hover{border-color:var(--teal)}
+.item .t{flex:1;min-width:0}
+.item .sub{font-size:13px;color:var(--mute)}
+.badge{display:inline-block;font-size:12px;font-weight:700;border-radius:6px;padding:1px 8px;white-space:nowrap}
+.sev-高{background:var(--red);color:#FDF6F6}
+.sev-中{background:var(--amber-bg);color:var(--amber);border:1px solid #E5C48F}
+.sev-低{background:var(--gray-bg);color:var(--ink2);border:1px solid var(--line)}
+.grp{background:var(--teal-bg);color:#0F5550}
+.st{background:var(--gray-bg);color:var(--ink2)}
+.compact .item{padding:8px 12px}
+table{border-collapse:collapse;width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:8px 10px;border-bottom:1px solid #ECEAE3;text-align:left;vertical-align:top;font-size:14px}
+th{background:#EFEDE6;font-weight:700;color:var(--ink2);font-size:13px;white-space:nowrap}
+tr.click{cursor:pointer}
+tr.click:hover td{background:#F4F8F7}
+.ok{color:var(--teal);font-weight:700}
+.bad{color:var(--red);font-weight:700}
+.gridwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.gridwrap table{border:0;border-radius:0}
+.grid td,.grid th{text-align:center;padding:6px 6px;min-width:74px}
+.grid th.m,.grid td.m{text-align:left;min-width:220px;position:sticky;left:0;background:var(--card);z-index:1}
+.grid th.m{background:#EFEDE6}
+.cell{display:block;border-radius:6px;padding:4px 2px;font-size:13px;line-height:1.35;border:1px solid transparent;width:100%;font:inherit;font-size:13px;background:none;color:inherit}
+.cell .r{font-weight:700}
+.cell .v{color:var(--mute);font-size:12px}
+.cell.has{cursor:pointer}
+.cell.c-高{background:var(--red-bg);border-color:#E7B4B4}
+.cell.c-中{background:var(--amber-bg);border-color:#E5C48F}
+.cell.c-低,.cell.c-known{background:var(--gray-bg);border-color:var(--line)}
+.cell .mk{font-size:12px;font-weight:700}
+.c-高 .mk{color:var(--red)} .c-中 .mk{color:var(--amber)} .c-低 .mk,.c-known .mk{color:var(--ink2)}
+.ftrow td{background:#F3F1EB;font-weight:700;text-align:left;color:var(--ink2);font-size:13px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;color:var(--ink2);margin:10px 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:3px;display:inline-block;border:1px solid var(--line)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}
+.chip{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:4px 12px;cursor:pointer;color:var(--ink2)}
+.chip[aria-pressed=true]{background:var(--ink);color:#F7F6F2;border-color:var(--ink)}
+input[type=search],input[type=text],textarea{font:inherit;font-size:14px;border:1px solid #CFCBC0;border-radius:8px;padding:6px 10px;background:#fff;color:var(--ink)}
+.muted{color:var(--mute);font-size:13px}
+.empty{background:var(--card);border:1px dashed var(--line);border-radius:10px;padding:18px;color:var(--mute)}
+/* 側邊卡片 */
+.scrim{position:fixed;inset:0;background:rgba(20,33,61,.35);display:none;z-index:10}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(720px,100%);background:var(--paper);box-shadow:-8px 0 30px rgba(0,0,0,.15);transform:translateX(105%);transition:transform .2s;z-index:11;overflow-y:auto;padding:22px 26px 40px}
+.open .scrim{display:block}.open .drawer{transform:none}
+.drawer h3{font-size:19px;margin:10px 0 6px;line-height:1.45}
+.drawer h4{font-size:14px;margin:18px 0 6px;color:var(--teal)}
+.drawer ul,.drawer ol{margin:0;padding-left:22px}
+.drawer li{margin:3px 0}
+.x{float:right;font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:4px 12px;cursor:pointer}
+pre{background:#14213D;color:#E8ECF2;border-radius:8px;padding:10px 12px;font-size:12.5px;white-space:pre-wrap;word-break:break-all;font-family:"JetBrains Mono",Consolas,monospace}
+details{margin:6px 0}
+summary{cursor:pointer;font-size:14px}
+.fb{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:10px}
+.fb .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+.fb label{font-size:14px}
+.fb textarea{width:100%;min-height:60px}
+.btn{font:inherit;font-size:14px;background:var(--teal);color:#fff;border:0;border-radius:8px;padding:7px 18px;cursor:pointer}
+.err{color:var(--red);font-size:13px;margin-top:6px;min-height:1em}
+.okmsg{color:var(--teal);font-size:13px;margin-top:6px}
+.chart{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.lock{max-width:380px;margin:80px auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px}
+@media (max-width:700px){header,nav,main{padding-left:14px;padding-right:14px}.tile .n{font-size:24px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>推論平台自動巡檢</h1>
+  <label class="meta">巡檢日期 <select id="date" aria-label="巡檢日期"></select></label>
+  <span class="meta" id="runinfo"></span>
+</header>
+<div class="demo" id="demo" hidden>示範版：資料全部是模擬的；在這裡按的回饋只存在這個頁面，重新整理就會消失。</div>
+<nav role="tablist">
+  <button role="tab" data-tab="today" aria-selected="true">今日</button>
+  <button role="tab" data-tab="grid" aria-selected="false">各模型健康</button>
+  <button role="tab" data-tab="all" aria-selected="false">全部發現</button>
+  <button role="tab" data-tab="hist" aria-selected="false">歷史</button>
+</nav>
+<main id="main"><p class="muted">載入中…</p></main>
+<div id="dw"><div class="scrim" id="scrim"></div><aside class="drawer" id="drawer" aria-label="發現卡"></aside></div>
+
+<script>
+const S = { tab: "today", date: null, filter: "active", q: "" };
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pct = (x) => (x == null ? "—" : (x * 100).toFixed(1) + "%");
+const sev = (s) => `<span class="badge sev-${esc(s)}">${esc(s)}</span>`;
+const DEMO = window.DEMO || null;
+
+// ---------- 資料來源：正式版打 API；示範版用內嵌資料 ----------
+async function api(path, body) {
+  if (DEMO) return demoApi(path, body);
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { showLock(); throw new Error("401"); }
+  if (!r.ok) throw new Error(j.error || "讀取失敗");
+  return j;
+}
+function demoApi(path, body) {
+  const u = new URL(path, "http://x"), d = u.searchParams.get("date") || DEMO.dates[0];
+  if (u.pathname === "/api/day") return DEMO.day[d];
+  if (u.pathname === "/api/grid") return DEMO.grid[d];
+  if (u.pathname === "/api/findings") return DEMO.findings;
+  if (u.pathname === "/api/history") return DEMO.history;
+  if (u.pathname === "/api/card") return DEMO.cards[u.searchParams.get("sig")];
+  if (u.pathname === "/api/feedback") {
+    const zh = { known: "已知", false_positive: "誤報", open: "待處理" }[body.status];
+    if (!body.who) throw new Error("請填回饋人");
+    if (body.status !== "open" && !body.note) throw new Error("標成已知或誤報時，請寫一句原因");
+    const c = DEMO.cards[body.sig];
+    c.status = body.status; c.status_zh = zh; c.note = body.note;
+    c.feedback.push({ ts: new Date().toLocaleString("zh-TW"), status: body.status, note: body.note, who: body.who });
+    DEMO.findings.forEach((f) => { if (f.signature === body.sig) { f.status = body.status; f.status_zh = zh; f.note = body.note; } });
+    Object.values(DEMO.day).forEach((dd) => dd.items.forEach((i) => { if (i.signature === body.sig) { i.status = body.status; i.status_zh = zh; i.note = body.note; } }));
+    return { ok: true };
+  }
+}
+
+// ---------- 分頁 ----------
+document.querySelectorAll("nav button").forEach((b) => b.onclick = () => {
+  S.tab = b.dataset.tab;
+  document.querySelectorAll("nav button").forEach((x) => x.setAttribute("aria-selected", x === b));
+  render();
+});
+$("#date").onchange = (e) => { S.date = e.target.value; render(); };
+$("#scrim").onclick = closeCard;
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeCard(); });
+
+async function render() {
+  try {
+    const day = await api(`/api/day${S.date ? "?date=" + S.date : ""}`);
+    if (day.empty) { $("#main").innerHTML = `<div class="empty">還沒有巡檢結果。執行一次 <b>python run.py scan</b> 之後這裡就會有資料。</div>`; return; }
+    S.date = day.date;
+    $("#date").innerHTML = day.dates.map((d) => `<option ${d === day.date ? "selected" : ""}>${esc(d)}</option>`).join("");
+    const w = day.window || {};
+    $("#runinfo").textContent = `巡檢時間 ${(day.run_at || "").replace("T", " ")} ・ 近期 ${w.recent ? w.recent.join("～") : "—"} ・ 基準 ${w.base ? w.base.join("～") : "—"}`;
+    if (S.tab === "today") renderToday(day);
+    if (S.tab === "grid") renderGrid(await api(`/api/grid?date=${S.date}`));
+    if (S.tab === "all") renderAll(await api("/api/findings"));
+    if (S.tab === "hist") renderHist(await api("/api/history"));
+  } catch (e) { if (e.message !== "401") $("#main").innerHTML = `<div class="empty">讀取失敗：${esc(e.message)}</div>`; }
+}
+
+function itemBtn(i, showGroup = true) {
+  return `<button class="item" data-sig="${esc(i.signature)}">${sev(i.severity)}
+    <span class="t"><span>${esc(i.title)}</span><br><span class="sub">${esc(i.kind_zh)}${i.first_seen ? " ・ 首次 " + esc(i.first_seen) : ""}${i.note ? " ・ 備註：" + esc(i.note) : ""}</span></span>
+    ${showGroup ? `<span class="badge grp">${esc(i.group_zh)}</span>` : ""}${(!showGroup || (i.status && i.status !== "open")) ? ` <span class="badge st">${esc(i.status_zh)}</span>` : ""}</button>`;
+}
+function bindItems(root) { root.querySelectorAll("[data-sig]").forEach((b) => b.onclick = () => openCard(b.dataset.sig)); }
+
+function renderToday(d) {
+  const c = d.counts, need = d.items.filter((i) => ["new", "worse", "reopened"].includes(i.group));
+  const order = { "高": 0, "中": 1, "低": 2 };
+  need.sort((a, b) => order[a.severity] - order[b.severity]);
+  const ong = d.items.filter((i) => i.group === "ongoing"), sup = d.items.filter((i) => i.group === "suppressed"), res = d.items.filter((i) => i.group === "resolved");
+  const det = d.detectors.map((x) => `<tr><td>${esc(x.name)}</td><td class="${x.status === "ok" ? "ok" : "bad"}">${x.status === "ok" ? "正常" : esc(x.status)}</td><td>${x.count}</td></tr>`).join("");
+  $("#main").innerHTML = `
+  <div class="tiles">
+    <div class="tile need"><div class="n">${d.need}</div><div class="l">需要看（新 ${c.new || 0}・惡化 ${c.worse || 0}・復發 ${c.reopened || 0}）</div></div>
+    <div class="tile"><div class="n">${c.ongoing || 0}</div><div class="l">持續中（已報過、尚未回覆）</div></div>
+    <div class="tile"><div class="n">${c.suppressed || 0}</div><div class="l">已略過（已知或誤報）</div></div>
+    <div class="tile"><div class="n">${c.resolved || 0}</div><div class="l">已恢復</div></div>
+    <div class="tile"><div class="n">${d.queries.n}</div><div class="l">查詢次數・${d.queries.sec} 秒${d.queries.failed ? `・<span class="bad">失敗 ${d.queries.failed}</span>` : ""}</div></div>
+  </div>
+  <h2>需要看的發現</h2>
+  <div class="list">${need.map((i) => itemBtn(i)).join("") || `<div class="empty">今天沒有新的、惡化或復發的問題。</div>`}</div>
+  <h2>持續中（已報過、還沒有人回覆）</h2>
+  <div class="list compact">${ong.map((i) => itemBtn(i)).join("") || `<div class="empty">沒有。</div>`}</div>
+  ${sup.length ? `<h2>已略過（標成已知或誤報，且沒有惡化）</h2><div class="list compact">${sup.map((i) => itemBtn(i, false)).join("")}</div>` : ""}
+  ${res.length ? `<h2>已恢復</h2><div class="list compact">${res.map((i) => itemBtn(i)).join("")}</div>` : ""}
+  <h2>偵測器執行狀況</h2>
+  <table><tr><th>偵測器</th><th>狀態</th><th>件數</th></tr>${det}</table>`;
+  bindItems($("#main"));
+}
+
+function markInfo(marks) {
+  const act = marks.filter((k) => k.status !== "known"), kn = marks.filter((k) => k.status === "known");
+  const top = act.length ? (act.some((k) => k.severity === "高") ? "高" : act.some((k) => k.severity === "中") ? "中" : "低") : (kn.length ? "known" : "");
+  const mk = act.length ? `<span class="mk">⚠ ${top} ${act.length} 件</span>` : kn.length ? `<span class="mk">已知 ${kn.length} 件</span>` : "";
+  return { top, mk, tip: marks.map((k) => `[${k.status_zh}] ${k.title}`).join("\n") };
+}
+function renderGrid(g) {
+  const byKey = {}; g.cells.forEach((c) => byKey[c.model + "|" + c.site] = c);
+  const ft = { XML: "心電圖（XML）", DICOM: "影像（DICOM）" };
+  let rows = "", last = null;
+  g.models.forEach((m) => {
+    if (m.filetype !== last) { rows += `<tr class="ftrow"><td colspan="${g.sites.length + 1}">${esc(ft[m.filetype] || m.filetype)}</td></tr>`; last = m.filetype; }
+    byKey[m.model + "|*"] = { model: m.model, site: "整個模型", marks: m.marks };
+    const rm = markInfo(m.marks);
+    rows += `<tr><td class="m"><button class="cell ${rm.top ? "has c-" + rm.top : ""}" style="text-align:left;padding:4px 8px" ${m.marks.length ? `data-cell="${esc(m.model + "|*")}"` : "disabled"} title="${esc(rm.tip)}">
+      <span class="r">${esc(m.model)}</span><br><span class="v">${esc(m.procedures.join("、"))}</span>${rm.mk ? "<br>" + rm.mk : ""}</button></td>` + g.sites.map((s) => {
+      const c = byKey[m.model + "|" + s];
+      if (!c) return `<td><span class="muted">—</span></td>`;
+      const ci = markInfo(c.marks);
+      return `<td><button class="cell ${ci.top ? "has c-" + ci.top : ""}" ${c.marks.length ? `data-cell="${esc(m.model + "|" + s)}"` : "disabled"} title="${esc(ci.tip)}">
+        <span class="r">${pct(c.nfi_rate)}</span><br><span class="v">${c.n} 筆・基準 ${pct(c.base_rate)}</span>${ci.mk ? "<br>" + ci.mk : ""}</button></td>`;
+    }).join("") + "</tr>";
+  });
+  const plat = g.platform.map((k) => `<button class="item" data-sig="${esc(k.signature)}">${sev(k.severity)}<span class="t">${esc(k.title)}</span><span class="badge st">${esc(k.status_zh)}</span></button>`).join("");
+  $("#main").innerHTML = `
+  <h2>各模型 × 院區（近期 ${esc((g.window?.recent || []).join("～"))}）</h2>
+  <p class="muted">每格：近期 NFI 比例、近期筆數、基準期 NFI 比例。整個模型的問題標在左邊模型名稱；只發生在某院區的問題標在那一格。有標記的格子點一下，看是哪些發現。</p>
+  <div class="legend"><span><i class="sw" style="background:var(--red-bg);border-color:#E7B4B4"></i>有「高」的待處理發現</span>
+    <span><i class="sw" style="background:var(--amber-bg);border-color:#E5C48F"></i>有「中」的待處理發現</span>
+    <span><i class="sw" style="background:var(--gray-bg)"></i>只有低或已知</span><span>— 該院區沒有這個模型的資料</span></div>
+  <div class="gridwrap"><table class="grid"><tr><th class="m">模型</th>${g.sites.map((s) => `<th>${esc(s)}</th>`).join("")}</tr>${rows}</table></div>
+  <h2>不屬於特定模型或院區的發現</h2>
+  <div class="list compact">${plat || `<div class="empty">沒有。</div>`}</div>
+  <div id="cellpick"></div>`;
+  bindItems($("#main"));
+  $("#main").querySelectorAll("[data-cell]").forEach((b) => b.onclick = () => {
+    const c = byKey[b.dataset.cell];
+    if (c.marks.length === 1) return openCard(c.marks[0].signature);
+    const box = $("#cellpick");
+    box.innerHTML = `<h2>${esc(c.model)} @ ${esc(c.site)} 的發現</h2><div class="list compact">${c.marks.map((k) => `<button class="item" data-sig="${esc(k.signature)}">${sev(k.severity)}<span class="t">${esc(k.title)}</span><span class="badge st">${esc(k.status_zh)}</span></button>`).join("")}</div>`;
+    bindItems(box); box.scrollIntoView({ behavior: "smooth" });
+  });
+}
+
+function renderAll(rows) {
+  const F = { active: ["open"], all: null, known: ["known"], fp: ["false_positive"], resolved: ["resolved"] };
+  const flt = rows.filter((r) => (!F[S.filter] || F[S.filter].includes(r.status)) && (!S.q || (r.title + r.kind_zh + (r.note || "")).includes(S.q)));
+  const chip = (k, t) => `<button class="chip" data-f="${k}" aria-pressed="${S.filter === k}">${t}（${rows.filter((r) => !F[k] || F[k].includes(r.status)).length}）</button>`;
+  $("#main").innerHTML = `
+  <div class="filters">${chip("active", "待處理")}${chip("known", "已知")}${chip("fp", "誤報")}${chip("resolved", "已恢復")}${chip("all", "全部")}
+    <input type="search" id="q" placeholder="搜尋標題、類型、備註" value="${esc(S.q)}" aria-label="搜尋"></div>
+  <table><tr><th>嚴重度</th><th>狀態</th><th>類型</th><th>發現</th><th>首次</th><th>最近</th><th>次數</th></tr>
+  ${flt.map((r) => `<tr class="click" data-sig="${esc(r.signature)}" tabindex="0"><td>${sev(r.severity || "中")}</td><td>${esc(r.status_zh)}</td><td>${esc(r.kind_zh)}</td>
+    <td>${esc(r.title)}${r.note ? `<br><span class="muted">備註：${esc(r.note)}</span>` : ""}</td><td>${esc(r.first_seen)}</td><td>${esc(r.last_seen)}</td><td>${r.times_seen}</td></tr>`).join("")
+    || `<tr><td colspan="7" class="muted">沒有符合的發現。</td></tr>`}</table>`;
+  $("#main").querySelectorAll(".chip").forEach((b) => b.onclick = () => { S.filter = b.dataset.f; renderAll(rows); });
+  const q = $("#q"); q.oninput = () => { S.q = q.value; const pos = q.selectionStart; renderAll(rows); const n = $("#q"); n.focus(); n.setSelectionRange(pos, pos); };
+  $("#main").querySelectorAll("tr[data-sig]").forEach((t) => { t.onclick = () => openCard(t.dataset.sig); t.onkeydown = (e) => { if (e.key === "Enter") openCard(t.dataset.sig); }; });
+}
+
+function renderHist(h) {
+  const runs = h.runs, max = Math.max(1, ...runs.map((r) => r.detected));
+  const W = 640, bw = Math.min(60, (W - 40) / Math.max(runs.length, 1) / 2.4), H = 180;
+  const bars = runs.map((r, i) => {
+    const x = 40 + i * bw * 2.4, h1 = r.detected / max * 130, h2 = r.reported / max * 130;
+    return `<rect x="${x}" y="${150 - h1}" width="${bw}" height="${h1}" fill="#D3D1C7"/><rect x="${x + bw}" y="${150 - h2}" width="${bw}" height="${h2}" fill="#1D7A74"/>
+      <text x="${x + bw}" y="168" font-size="11" text-anchor="middle" fill="#3F4A5A">${esc(r.run_date.slice(5))}</text>
+      <text x="${x + bw / 2}" y="${146 - h1}" font-size="11" text-anchor="middle" fill="#3F4A5A">${r.detected}</text>
+      <text x="${x + bw * 1.5}" y="${146 - h2}" font-size="11" text-anchor="middle" fill="#0F5550">${r.reported}</text>`;
+  }).join("");
+  const life = h.findings.slice().sort((a, b) => (a.first_seen + a.title).localeCompare(b.first_seen + b.title));
+  $("#main").innerHTML = `
+  <h2>每次巡檢的件數</h2>
+  <div class="chart"><div class="legend"><span><i class="sw" style="background:#D3D1C7"></i>偵測到</span><span><i class="sw" style="background:#1D7A74"></i>需要人看</span></div>
+  <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px" role="img" aria-label="每次巡檢偵測到的件數與需要人看的件數">
+  <line x1="30" y1="150" x2="${W - 10}" y2="150" stroke="#CFCBC0"/>${bars}</svg>
+  <table style="margin-top:8px"><tr><th>巡檢日期</th><th>偵測到</th><th>需要人看</th><th>略過</th></tr>
+  ${runs.map((r) => `<tr><td>${esc(r.run_date)}</td><td>${r.detected}</td><td>${r.reported}</td><td>${r.suppressed}</td></tr>`).join("")}</table></div>
+  <h2>每件發現的生命週期</h2>
+  <table><tr><th>發現</th><th>狀態</th><th>首次</th><th>最近一次</th><th>出現次數</th><th>連續沒出現</th></tr>
+  ${life.map((r) => `<tr class="click" data-sig="${esc(r.signature)}" tabindex="0"><td>${esc(r.title)}</td><td>${esc(r.status_zh)}</td><td>${esc(r.first_seen)}</td><td>${esc(r.last_seen)}</td><td>${r.times_seen}</td><td>${r.runs_unseen}</td></tr>`).join("")}</table>`;
+  $("#main").querySelectorAll("tr[data-sig]").forEach((t) => t.onclick = () => openCard(t.dataset.sig));
+}
+
+// ---------- 發現卡 ----------
+async function openCard(sig) {
+  const r = await api(`/api/card?sig=${encodeURIComponent(sig)}`);
+  const c = r.card;
+  const body = c ? `
+    <h4>查到的事實（每個數字都來自下方 SQL）</h4><ul>${c.facts.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
+    <h4>可能原因（推測）</h4><p style="margin:0">${esc(c.likely_cause)}</p>
+    ${c.next_steps.length ? `<h4>建議下一步</h4><ol>${c.next_steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}
+    ${c.related && c.related.length ? `<h4>同一模型的其他發現</h4><ul>${c.related.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : ""}
+    ${c.writer_note ? `<p class="muted">註：${esc(c.writer_note)}</p>` : ""}
+    <h4>證據</h4>
+    ${c.evidence.map((e) => `<details><summary>偵測：${esc(e.label)}</summary><p class="muted">${Object.entries(e.values).map(([k, v]) => esc(k) + " " + esc(v)).join("，")}</p><pre>${esc(e.sql)}</pre></details>`).join("")}
+    ${c.drill.map((d) => `<details><summary>追查：${esc(d.label)}</summary><pre>${esc(d.sql)}</pre></details>`).join("")}
+    <p class="muted">寫手：${c.writer === "llm" ? "院內 LLM（已通過數字檢查）" : "模板"}</p>`
+    : `<p class="muted">這件沒有發現卡（被略過的發現不會追查）。</p>`;
+  const fb = (r.feedback || []).map((f) => `<li>${esc(f.ts)}　${esc(f.who || "")}　→ ${esc({ known: "已知", false_positive: "誤報", open: "待處理", resolved: "已恢復" }[f.status] || f.status)}${f.note ? "：" + esc(f.note) : ""}</li>`).join("");
+  let who = ""; try { who = localStorage.getItem("explorer_who") || ""; } catch (e) {}
+  $("#drawer").innerHTML = `<button class="x" id="close">關閉</button>
+    <div>${sev(r.severity || "中")} <span class="badge st">${esc(r.status_zh)}</span> <span class="badge grp">${esc(r.kind_zh)}</span></div>
+    <h3>${esc(r.title)}</h3>
+    <p class="muted">首次 ${esc(r.first_seen)} ・ 最近 ${esc(r.last_seen)} ・ 出現 ${r.times_seen} 次${c && c.since ? " ・ 起始約 " + esc(c.since) : ""}<br>代號 <code>${esc(r.signature)}</code></p>
+    ${body}
+    <h4>回饋</h4>
+    ${fb ? `<ul class="muted">${fb}</ul>` : `<p class="muted">還沒有人回饋。</p>`}
+    <form class="fb" id="fbform">
+      <div class="row"><label><input type="radio" name="st" value="known" ${r.status === "known" ? "checked" : ""}> 已知（不再報，除非惡化）</label>
+        <label><input type="radio" name="st" value="false_positive" ${r.status === "false_positive" ? "checked" : ""}> 誤報</label>
+        <label><input type="radio" name="st" value="open" ${r.status === "open" ? "checked" : ""}> 改回待處理</label></div>
+      <div class="row"><label>回饋人 <input type="text" id="who" value="${esc(who)}" maxlength="50" style="width:140px"></label></div>
+      <textarea id="note" placeholder="一句原因，例如：臨床端缺 Vital sign，已請資訊處處理" maxlength="500">${esc(r.note || "")}</textarea>
+      <div class="row" style="margin:10px 0 0"><button class="btn" type="submit">送出回饋</button></div>
+      <div class="err" id="fberr" role="alert"></div>
+    </form>`;
+  $("#dw").classList.add("open");
+  $("#close").onclick = closeCard;
+  const clr = () => ($("#fberr").textContent = "");
+  $("#who").oninput = clr; $("#note").oninput = clr; $("#fbform").onchange = clr;
+  $("#fbform").onsubmit = async (e) => {
+    e.preventDefault();
+    const st = ($("#fbform").querySelector("input[name=st]:checked") || {}).value, w = $("#who").value.trim(), n = $("#note").value.trim();
+    if (!st) return ($("#fberr").textContent = "請先選擇已知、誤報或改回待處理");
+    if (!w) return ($("#fberr").textContent = "請填回饋人");
+    if (st !== "open" && !n) return ($("#fberr").textContent = "標成已知或誤報時，請寫一句原因");
+    try {
+      await api("/api/feedback", { sig, status: st, note: n, who: w });
+      try { localStorage.setItem("explorer_who", w); } catch (e) {}
+      await openCard(sig); render();
+      $("#fberr").outerHTML = `<div class="okmsg">已送出。下一次巡檢會依這個回饋決定要不要再報。</div>`;
+    } catch (err) { $("#fberr").textContent = err.message; }
+  };
+}
+function closeCard() { $("#dw").classList.remove("open"); }
+
+function showLock() {
+  $("#main").innerHTML = `<form class="lock" id="lock"><h2>請輸入通行碼</h2><input type="password" id="tok" style="width:100%" aria-label="通行碼">
+    <div class="row" style="margin-top:12px"><button class="btn">進入</button></div><div class="err" id="lerr"></div></form>`;
+  $("#tok").oninput = () => ($("#lerr").textContent = "");
+  $("#lock").onsubmit = async (e) => {
+    e.preventDefault();
+    if (!$("#tok").value) return ($("#lerr").textContent = "請輸入通行碼");
+    const r = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: $("#tok").value }) });
+    if (r.ok) render(); else $("#lerr").textContent = "通行碼不對";
+  };
+}
+
+if (DEMO) $("#demo").hidden = false;
+render();
+</script>
+</body>
+</html>

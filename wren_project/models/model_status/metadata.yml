@@ -1,0 +1,24 @@
+name: model_status
+table_reference:
+  schema: public
+  table: model_status
+primary_key: model
+properties:
+  description: >-
+    每個模型一筆「目前」狀態，沒有歷史紀錄（查不到過去何時暫停過）。
+    部分有推論紀錄的模型不在本表（例如CLIN_Bleeding_Risk、IT_ 開頭的整合測試）。
+columns:
+  - name: model
+    type: VARCHAR
+    is_primary_key: true
+    not_null: true
+    properties: {description: AI 模型名稱（與 inferences.model 同名對應，資料庫無外鍵）}
+  - name: status
+    type: VARCHAR
+    properties: {description: "模型實際執行狀態：testing / running / pause / stop / error / shutdown"}
+  - name: ctrl_status
+    type: VARCHAR
+    properties: {description: "管理端下的控制指令：testing / running / pause / stop；只有 pause、stop 會停止處理"}
+  - name: change_time
+    type: TIMESTAMP
+    properties: {description: 最後一次狀態變更時間}

@@ -1,0 +1,17 @@
+relationships:
+  - name: inferences_exams
+    models: [inferences, exams]
+    join_type: MANY_TO_ONE
+    condition: inferences.exam_id = exams.id
+  - name: inferences_all_exams
+    models: [inferences_all, exams]
+    join_type: MANY_TO_ONE
+    condition: inferences_all.exam_id = exams.id
+  - name: inferences_model_status
+    models: [inferences, model_status]
+    join_type: MANY_TO_ONE
+    condition: inferences.model = model_status.model
+  - name: inferences_all_model_status
+    models: [inferences_all, model_status]
+    join_type: MANY_TO_ONE
+    condition: inferences_all.model = model_status.model

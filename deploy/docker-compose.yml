@@ -1,0 +1,50 @@
+# Wren MCP（推論平台營運統計）PoC
+# 機密（資料庫密碼、MCP token）不寫在任何檔案，由啟動腳本從環境變數帶入：
+#   WREN_PG_PASSWORD、MCP_TOKEN
+name: wren-poc
+
+x-db: &db
+  WREN_PG_HOST: ${WREN_PG_HOST:?請設定 WREN_PG_HOST（資料庫主機）}
+  WREN_PG_PORT: ${WREN_PG_PORT:-5432}
+  WREN_PG_DB: ${WREN_PG_DB:-inference_db}
+  WREN_PG_USER: ${WREN_PG_USER:-readonly_user}
+  WREN_PG_PASSWORD: ${WREN_PG_PASSWORD:?請先設定環境變數 WREN_PG_PASSWORD}
+
+services:
+  wren:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: wren-poc:0.2
+    environment:
+      <<: *db
+      MCP_TOKEN: ${MCP_TOKEN:?請先設定環境變數 MCP_TOKEN}
+      ACCEPT_MCP_URL: http://gateway:8080/mcp
+      ACCEPT_MODE: appdb
+    restart: unless-stopped
+    networks: [wren_net]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), 3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  gateway:
+    image: nginx:1.27-alpine
+    depends_on:
+      wren:
+        condition: service_healthy
+    environment:
+      MCP_TOKEN: ${MCP_TOKEN:?請先設定環境變數 MCP_TOKEN}
+      NGINX_ENVSUBST_FILTER: MCP_TOKEN
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./logs:/var/log/nginx
+    ports:
+      - "${WREN_MCP_PORT:-18080}:8080"
+    restart: unless-stopped
+    networks: [wren_net]
+
+networks:
+  wren_net: {}

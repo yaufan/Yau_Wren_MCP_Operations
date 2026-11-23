@@ -1,0 +1,32 @@
+# 自動找問題（Explorer）設定。門檻是「跟自己過去比」的統計門檻，不是業務門檻。
+windows:
+  recent_days: 7        # 近期：昨天往回 7 天
+  baseline_days: 28     # 基準：近期之前 28 天
+rate_shift:             # NFI / 失敗率偏移
+  windows: [7, 1]       # 近 7 天、昨天各比一次
+  min_recent_n: 20
+  min_z: 4.0
+  min_abs_diff: 0.08
+volume_drop:            # 量驟降（跟同類日平均比）
+  max_ratio: 0.3
+  min_expected: 8
+  explain_share: 0.9    # 子切片占短少量 ≥90% 就改報子切片
+new_message:
+  lookback_days: 3
+  min_count: 2
+invariant:              # 同一個檢查應跑的模型數
+  min_diff: 0.02
+  min_z: 4.0
+latency:
+  min_ratio: 2.0
+  min_n: 15
+stuck:
+  hours: 24
+reason_mix:
+  min_recent_nfi: 20
+  min_tvd: 0.3
+registry:
+  worsen_factor: 1.5    # 已知問題嚴重程度變成 1.5 倍才再報
+  resolve_after_runs: 3 # 連續 3 次沒偵測到 → 視為已恢復
+investigator:
+  trend_days: 21
