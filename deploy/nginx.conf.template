@@ -1,0 +1,36 @@
+# Wren MCP 閘道：檢查 Bearer token 後轉給 wren 容器
+# MCP_TOKEN 由 docker compose 從 .env 帶入（nginx 官方映像會用 envsubst 展開 ${MCP_TOKEN}）
+map $http_authorization $wren_auth_ok {
+    default                 0;
+    "Bearer ${MCP_TOKEN}"   1;
+}
+
+log_format wren_audit '$time_iso8601 $remote_addr status=$status bytes=$body_bytes_sent '
+                      'rt=$request_time auth=$wren_auth_ok "$request"';
+
+server {
+    listen 8080;
+    access_log /var/log/nginx/wren_access.log wren_audit;
+    client_max_body_size 1m;
+
+    location = /healthz {
+        return 200 "ok\n";
+    }
+
+    location /mcp {
+        if ($wren_auth_ok = 0) {
+            return 401;
+        }
+        proxy_pass http://wren:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host 127.0.0.1:8000;   # 讓 wren 的 Host 檢查通過
+        proxy_set_header Authorization "";      # token 只在閘道用，不往後傳
+        proxy_set_header Connection "";
+        proxy_buffering off;                    # streamable HTTP / SSE 需要
+        proxy_read_timeout 300s;
+    }
+
+    location / {
+        return 404;
+    }
+}

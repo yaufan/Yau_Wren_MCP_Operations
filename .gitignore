@@ -1,0 +1,16 @@
+# 機密：只保留說明檔
+secrets/*
+!secrets/README.txt
+.env
+*.pem
+# 離線安裝套件（太大，用 deploy/fetch_wheels.sh 下載）
+deploy/wheels/
+deploy/logs/
+# 執行產物
+wren_project/target/
+wren_project/.wren/
+explorer/state/
+explorer/.wrenhome/
+*.db
+__pycache__/
+*.pyc

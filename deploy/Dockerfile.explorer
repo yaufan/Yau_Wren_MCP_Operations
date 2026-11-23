@@ -1,0 +1,15 @@
+# 自動巡檢（偵測器＋記憶＋調查員＋監控頁面）
+# 直接沿用已建好的 Wren 映像（wren-poc:0.2）：Python 與所有套件都在裡面，不需要再下載任何東西
+# 只複製正式環境要用的檔案；模擬資料產生器（explorer/sim）刻意不放進映像
+FROM wren-poc:0.2
+USER root
+COPY explorer/run.py explorer/scheduler.py explorer/config.yaml /app/explorer/
+COPY explorer/explorer /app/explorer/explorer
+COPY deploy/explorer_entrypoint.sh /app/explorer_entrypoint.sh
+RUN sed -i 's/\r$//' /app/explorer_entrypoint.sh && chmod +x /app/explorer_entrypoint.sh \
+ && mkdir -p /app/explorer/state && chown -R wren:wren /app/explorer
+USER wren
+WORKDIR /app/explorer
+ENV EXPLORER_STATE=/app/explorer/state
+EXPOSE 8090
+ENTRYPOINT ["/app/explorer_entrypoint.sh"]

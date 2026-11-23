@@ -1,0 +1,11 @@
+# Wren 連線設定範本；實際值在執行時從環境變數帶入，這個檔案不含密碼
+datasource: postgres
+host: ${WREN_PG_HOST}
+port: "${WREN_PG_PORT}"
+database: ${WREN_PG_DB}
+user: ${WREN_PG_USER}
+password: ${WREN_PG_PASSWORD}
+kwargs:
+  # 強制唯讀、單一查詢最多 60 秒、時間以台北時間解讀（推論平台資料庫預設 UTC）
+  options: "-c default_transaction_read_only=on -c statement_timeout=60000 -c TimeZone=Asia/Taipei"
+  application_name: wren_mcp

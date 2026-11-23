@@ -1,0 +1,115 @@
+[
+ {
+  "id": "G1",
+  "desc": "CLIN_Bleeding_Risk NFI 自 14 天前起升到約 99%（缺 Vital sign）",
+  "match": {
+   "model": "CLIN_Bleeding_Risk",
+   "kind": [
+    "rate_shift",
+    "nfi_reason_mix"
+   ]
+  }
+ },
+ {
+  "id": "G2",
+  "desc": "IMG_Abdominal_Trauma NFI 自 10 天前起升到約 50%（前處理 pipeline 未產出）",
+  "match": {
+   "model": "IMG_Abdominal_Trauma",
+   "kind": [
+    "rate_shift",
+    "nfi_reason_mix"
+   ]
+  }
+ },
+ {
+  "id": "G3",
+  "desc": "IMG_Dental_Pano 在 S11 院區近 7 天 NFI 升到約 40%（其他院區正常）",
+  "match": {
+   "model": "IMG_Dental_Pano",
+   "site": "S11",
+   "kind": [
+    "rate_shift"
+   ]
+  }
+ },
+ {
+  "id": "G4",
+  "desc": "S08 院區心電圖近 3 天量歸零（介接中斷）",
+  "match": {
+   "site": "S08",
+   "kind": [
+    "volume_drop"
+   ]
+  }
+ },
+ {
+  "id": "G5",
+  "desc": "近 3 天出現新錯誤訊息：無法由 loc='X9999' 判斷院區代碼",
+  "match": {
+   "kind": [
+    "new_message"
+   ],
+   "text": "X9999"
+  }
+ },
+ {
+  "id": "G6",
+  "desc": "檢查時間在未來（2177 年）",
+  "match": {
+   "kind": [
+    "invalid_time"
+   ]
+  }
+ },
+ {
+  "id": "G7",
+  "desc": "CLIN_Bleeding_Risk未登記在 model_status",
+  "match": {
+   "model": "CLIN_Bleeding_Risk",
+   "kind": [
+    "unregistered_model"
+   ]
+  }
+ },
+ {
+  "id": "G8",
+  "desc": "近 5 天約 6% 心電圖只跑了 2 個模型（心房顫動漏跑）",
+  "match": {
+   "kind": [
+    "invariant"
+   ]
+  }
+ },
+ {
+  "id": "G9",
+  "desc": "BONE_KUB 近 7 天耗時 P90 變成約 4 倍",
+  "match": {
+   "model": "BONE_KUB",
+   "kind": [
+    "latency_shift"
+   ]
+  }
+ },
+ {
+  "id": "G10",
+  "desc": "有推論卡在處理中超過 24 小時（ECG_Abnormality_14，狀態 3）",
+  "match": {
+   "kind": [
+    "stuck",
+    "new_category"
+   ]
+  }
+ },
+ {
+  "id": "G11",
+  "desc": "（第二天新發生）ECG_LV_Function在 S01 院區昨天起 NFI 升到約 30%（ECG 導程數不足）",
+  "match": {
+   "model": "ECG_LV_Function",
+   "kind": [
+    "rate_shift",
+    "new_message",
+    "nfi_reason_mix"
+   ]
+  }
+ }
+]

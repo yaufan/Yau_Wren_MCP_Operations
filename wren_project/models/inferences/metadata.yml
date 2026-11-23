@@ -1,0 +1,108 @@
+name: inferences
+primary_key: id
+properties:
+  description: >-
+    【預設分析表】一筆 = 一個模型對一份檢查的推論結果（同一病人同一模型只有一筆，狀態原地更新，沒有歷程）。
+    已排除：心室收縮功能模型早期測試資料（success/error/invalid）與整合／測試模型殘留（IT_ 開頭、TEST 開頭，例如 TEST_model、TEST_AI_MODEL、Test_Model_v1.0）。
+    已帶入檢查的院區、時間，並算好狀態分類與各段耗時，大部分問題只查這張表即可。
+columns:
+  - name: id
+    type: INTEGER
+    is_primary_key: true
+    not_null: true
+    properties:
+      description: "推論紀錄 ID"
+  - name: exam_id
+    type: INTEGER
+    properties:
+      description: "對應的檢查（exams.id）"
+  - name: model
+    type: VARCHAR
+    properties:
+      description: "AI 模型名稱，例如 ECG_Abnormality_14、ECG_LV_Function、ECG_AFib、IMG_Dental_Pano、BONE_KUB"
+  - name: inference_status
+    type: VARCHAR
+    properties:
+      description: "原始狀態碼。新版 4.2＝完成、4.1＝資料已上傳待圖片；舊版 5＝4.2、4＝4.1；NFI＝資料規格不符；nE＝錯誤；success/error/invalid＝測試期。分析請優先用 status_category"
+  - name: status_category
+    type: VARCHAR
+    properties:
+      description: "狀態分類：成功／不適用／失敗／處理中／測試期（已把新舊代碼合併）"
+  - name: is_test_era
+    type: BOOLEAN
+    properties:
+      description: "是否為心室收縮功能模型早期測試資料（文字狀態碼）"
+  - name: is_integration_test
+    type: BOOLEAN
+    properties:
+      description: "是否為整合／測試模型殘留（模型名稱以 IT_ 或 TEST 開頭，不分大小寫）"
+  - name: site
+    type: VARCHAR
+    properties:
+      description: "院區代號，例如 S01、S02、S03、S04、S05、S06、S07、S08、S09、S10；Unk＝未知"
+  - name: filetype
+    type: VARCHAR
+    properties:
+      description: "XML（心電圖）或 DICOM（影像）"
+  - name: procedure_code
+    type: VARCHAR
+    properties:
+      description: "檢查或手術代碼"
+  - name: study_time
+    type: TIMESTAMP
+    properties:
+      description: "檢查時間（台北時間）"
+  - name: platform_time
+    type: TIMESTAMP
+    properties:
+      description: "進入推論平台時間（台北時間）"
+  - name: data_storage_time
+    type: TIMESTAMP
+    properties:
+      description: "推論結果 JSON 寫入資料倉儲時間；NFI 為空"
+  - name: image_storage_time
+    type: TIMESTAMP
+    properties:
+      description: "結果圖片寫入資料倉儲時間；NFI 為空"
+  - name: study_date
+    type: DATE
+    properties:
+      description: "檢查日期；依日／月統計請用這欄"
+  - name: study_month
+    type: VARCHAR
+    properties:
+      description: "檢查月份，格式 YYYY-MM；依月統計請用這欄"
+  - name: infer_seconds
+    type: DOUBLE
+    properties:
+      description: "進平台到結果寫入倉儲的秒數（推論＋寫入）"
+  - name: image_upload_seconds
+    type: DOUBLE
+    properties:
+      description: "結果寫入到圖片上傳完成的秒數"
+  - name: end_to_end_seconds
+    type: DOUBLE
+    properties:
+      description: "檢查到圖片上傳完成的秒數（端到端）"
+  - name: info_log
+    type: VARCHAR
+    properties:
+      description: "處理訊息或錯誤訊息（自由文字，可看 NFI 原因）"
+  - name: exam
+    type: exams
+    relationship: inferences_exams
+  - name: model_info
+    type: model_status
+    relationship: inferences_model_status
+  - name: is_success
+    type: INTEGER
+    is_calculated: true
+    expression: "CASE WHEN status_category = '成功' THEN 1 ELSE 0 END"
+    properties:
+      description: "成功＝1，否則 0；成功率＝AVG(is_success)"
+  - name: is_nfi
+    type: INTEGER
+    is_calculated: true
+    expression: "CASE WHEN status_category = '不適用' THEN 1 ELSE 0 END"
+    properties:
+      description: "NFI＝1，否則 0；NFI 比例＝AVG(is_nfi)"
